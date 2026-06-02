@@ -318,17 +318,19 @@
   <div class="logo">APEX</div>
   <div class="login-card">
     <h2>Partner Admin Login</h2>
-    <div class="field">
-      <label>Username</label>
-      <input type="text" id="inp-user" placeholder="Jason" autocomplete="username" />
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" />
-    </div>
-    <div class="error-msg" id="login-error">Falscher Username oder Passwort.</div>
-    <br />
-    <button class="btn" onclick="doLogin()">Anmelden</button>
+    <form onsubmit="event.preventDefault(); doLogin();" autocomplete="on">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="inp-user" placeholder="Jason" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div class="error-msg" id="login-error">Falscher Username oder Passwort.</div>
+      <br />
+      <button type="submit" class="btn">Anmelden</button>
+    </form>
   </div>
 </div>
 
@@ -570,7 +572,7 @@ async function loadUsers() {
   document.getElementById("user-list-wrap").innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Lädt…</div>';
   try {
     const res = await fetch(`${WORKER_URL}/admin/users`, {
-      headers: { Authorization: `Bearer ${adminToken}` }
+      headers: { 'X-Admin-Key': adminToken }
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
@@ -709,7 +711,7 @@ async function saveUser() {
   try {
     const res = await fetch(`${WORKER_URL}/admin/users/${uid}`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      headers: { 'X-Admin-Key': adminToken, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -733,7 +735,7 @@ async function confirmDeleteUser() {
   try {
     const res = await fetch(`${WORKER_URL}/admin/users/${uid}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { 'X-Admin-Key': adminToken },
     });
     const data = await res.json();
     if (data.success) {
@@ -784,7 +786,7 @@ async function confirmPlanChange() {
   try {
     const res = await fetch(`${WORKER_URL}/admin/users/${uid}/plan`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      headers: { 'X-Admin-Key': adminToken, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -806,7 +808,7 @@ async function confirmPlanChange() {
 
 async function loadPartners() {
   const res = await fetch(`${WORKER_URL}/admin/partners`, {
-    headers: { Authorization: `Bearer ${adminToken}` },
+    headers: { 'X-Admin-Key': adminToken },
   });
   const data = await res.json();
   renderPartners(data);
@@ -853,7 +855,7 @@ async function addPartner() {
 
   const res = await fetch(`${WORKER_URL}/admin/partners`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+    headers: { 'X-Admin-Key': adminToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, name, stripeAccountId: acct, splitPercent: Number(split), discountPercent: Number(discount) }),
   });
   const data = await res.json();
@@ -874,7 +876,7 @@ async function deletePartner(code) {
   if (!confirm(`Partner "${code}" wirklich löschen?`)) return;
   const res = await fetch(`${WORKER_URL}/admin/partners/${code}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${adminToken}` },
+    headers: { 'X-Admin-Key': adminToken },
   });
   const data = await res.json();
   if (data.success) { showToast(`✓ Partner "${code}" gelöscht.`); loadPartners(); }
