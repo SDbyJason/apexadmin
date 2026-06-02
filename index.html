@@ -313,7 +313,6 @@
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
 <div id="login-screen">
   <div class="logo">APEX</div>
   <div class="login-card">
@@ -323,7 +322,7 @@
       <input type="text" id="inp-user" placeholder="Jason" autocomplete="username" />
     </div>
     <div class="field">
-      <label>Password</label>
+      <label>Password (Dein Admin Secret)</label>
       <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" />
     </div>
     <div class="error-msg" id="login-error">Falscher Username oder Passwort.</div>
@@ -332,23 +331,19 @@
   </div>
 </div>
 
-<!-- ── DASHBOARD ── -->
 <div id="dashboard">
   <div class="top-bar">
     <div class="logo">APEX — Partner Admin</div>
     <button class="btn-small" onclick="doLogout()">Abmelden</button>
   </div>
 
-  <!-- Tabs -->
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('users')">👤 User Management</button>
     <button class="tab-btn" onclick="switchTab('partners')">🤝 Partner</button>
   </div>
 
-  <!-- ════════════════════════════════════ USER TAB ════════════════════════════════════ -->
   <div id="tab-users" class="tab-pane active">
 
-    <!-- Stats -->
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-label">Gesamt User</div>
@@ -368,7 +363,6 @@
       </div>
     </div>
 
-    <!-- Search & Filter -->
     <div class="filter-bar">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
@@ -382,7 +376,6 @@
       <button class="btn-small" onclick="loadUsers()">↺ Aktualisieren</button>
     </div>
 
-    <!-- User Table -->
     <div class="card" style="padding: 0; overflow: hidden;">
       <div id="user-list-wrap">
         <div class="empty-state"><span class="loading-spinner"></span> Lädt…</div>
@@ -390,10 +383,8 @@
     </div>
   </div>
 
-  <!-- ════════════════════════════════════ PARTNER TAB ════════════════════════════════════ -->
   <div id="tab-partners" class="tab-pane">
 
-    <!-- Add Partner -->
     <div class="card">
       <h3>+ Neuen Partner hinzufügen</h3>
       <div class="grid-5col">
@@ -422,7 +413,6 @@
       <button class="btn" style="width:auto;padding:13px 32px;" onclick="addPartner()">Partner speichern</button>
     </div>
 
-    <!-- Partner Table -->
     <div class="card">
       <h3>Aktive Partner</h3>
       <div id="partner-list-wrap">
@@ -430,7 +420,6 @@
       </div>
     </div>
 
-    <!-- Ref Link Generator -->
     <div class="card" style="background: var(--surface2);">
       <p class="section-title">Referral Link Generator</p>
       <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">Klicke auf einen Code → Link wird automatisch kopiert.</p>
@@ -439,7 +428,6 @@
   </div>
 </div>
 
-<!-- ═══════════════════ EDIT USER MODAL ═══════════════════ -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <h2>User bearbeiten</h2>
@@ -500,7 +488,6 @@
   </div>
 </div>
 
-<!-- ═══════════════════ PLAN QUICK MODAL ═══════════════════ -->
 <div class="modal-overlay" id="plan-modal">
   <div class="modal" style="max-width:400px;">
     <h2 id="plan-modal-title">Pro Plan vergeben</h2>
@@ -519,23 +506,26 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// 1. KORREKTUR: Die Worker URL auf deinen tatsächlichen spring-fire Worker setzen
 const WORKER_URL = "https://spring-fire-06a2.4kjyyyftv6.workers.dev";
 const ALLOWED_USER = "Jason";
-const ALLOWED_PASS = "Zibik.210579";
 
 let adminToken = null;
 let allUsers = [];
-let planModalAction = null; // { uid, action: 'grant'|'revoke' }
+let planModalAction = null;
 
 // ─── LOGIN ───
 function doLogin() {
   const user = document.getElementById("inp-user").value.trim();
   const pass = document.getElementById("inp-pass").value.trim();
-  if (user !== ALLOWED_USER || pass !== ALLOWED_PASS) {
+  
+  if (user !== ALLOWED_USER || !pass) {
     document.getElementById("login-error").style.display = "block";
     return;
   }
-  adminToken = pass;
+  
+  // 2. KORREKTUR: Das eingegebene Passwort wird als X-Admin-Key an den Worker übergeben
+  adminToken = pass; 
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("dashboard").style.display = "block";
   loadUsers();
@@ -569,8 +559,9 @@ function switchTab(tab) {
 async function loadUsers() {
   document.getElementById("user-list-wrap").innerHTML = '<div class="empty-state"><span class="loading-spinner"></span> Lädt…</div>';
   try {
+    // 3. KORREKTUR: Header sendet jetzt 'X-Admin-Key' statt 'Authorization: Bearer ...'
     const res = await fetch(`${WORKER_URL}/admin/users`, {
-      headers: { Authorization: `Bearer ${adminToken}` }
+      headers: { "X-Admin-Key": adminToken }
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
@@ -579,7 +570,7 @@ async function loadUsers() {
     renderUsers(allUsers);
   } catch (err) {
     document.getElementById("user-list-wrap").innerHTML =
-      `<div class="empty-state" style="color:var(--red);">⚠ Fehler beim Laden: ${err.message}<br><small style="color:var(--text-dim);">Stell sicher, dass dein Worker /admin/users unterstützt.</small></div>`;
+      `<div class="empty-state" style="color:var(--red);">⚠ Fehler beim Laden: ${err.message}<br><small style="color:var(--text-dim);">Stell sicher, dass dein eingegebenes Passwort dem ADMIN_SECRET im Cloudflare Dashboard entspricht.</small></div>`;
   }
 }
 
@@ -707,13 +698,14 @@ async function saveUser() {
   };
 
   try {
+    // 4. KORREKTUR: Header angepasst & data.ok statt data.success ausgewertet
     const res = await fetch(`${WORKER_URL}/admin/users/${uid}`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      headers: { "X-Admin-Key": adminToken, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (data.success) {
+    if (data.ok) {
       showToast("✓ User gespeichert.");
       closeModal();
       loadUsers();
@@ -731,12 +723,13 @@ async function confirmDeleteUser() {
   if (!confirm(`User "${name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
 
   try {
+    // 5. KORREKTUR: Header angepasst & data.ok statt data.success
     const res = await fetch(`${WORKER_URL}/admin/users/${uid}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { "X-Admin-Key": adminToken },
     });
     const data = await res.json();
-    if (data.success) {
+    if (data.ok) {
       showToast(`✓ User "${name}" gelöscht.`);
       closeModal();
       loadUsers();
@@ -782,13 +775,14 @@ async function confirmPlanChange() {
   };
 
   try {
+    // 6. KORREKTUR: Header angepasst & data.ok statt data.success
     const res = await fetch(`${WORKER_URL}/admin/users/${uid}/plan`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      headers: { "X-Admin-Key": adminToken, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (data.success) {
+    if (data.ok) {
       showToast(isGrant ? `✓ Pro vergeben.` : `✓ Pro entzogen.`);
       closePlanModal();
       loadUsers();
@@ -805,16 +799,21 @@ async function confirmPlanChange() {
 // ═══════════════════════════════════════════════════════════
 
 async function loadPartners() {
-  const res = await fetch(`${WORKER_URL}/admin/partners`, {
-    headers: { Authorization: `Bearer ${adminToken}` },
-  });
-  const data = await res.json();
-  renderPartners(data);
+  try {
+    // 7. KORREKTUR: Header angepasst
+    const res = await fetch(`${WORKER_URL}/admin/partners`, {
+      headers: { "X-Admin-Key": adminToken },
+    });
+    const data = await res.json();
+    renderPartners(data);
+  } catch (err) {
+    console.error("Partner konnten nicht geladen werden", err);
+  }
 }
 
 function renderPartners(partners) {
   const wrap = document.getElementById("partner-list-wrap");
-  if (!partners.length) {
+  if (!partners || !partners.length) {
     wrap.innerHTML = '<div class="empty-state">Noch keine Partner. Füge oben einen hinzu.</div>';
     return;
   }
@@ -851,33 +850,43 @@ async function addPartner() {
   if (!code || !acct) { showToast("Code und Stripe Account ID sind Pflichtfelder.", true); return; }
   if (!acct.startsWith("acct_")) { showToast("Stripe Account ID muss mit acct_ beginnen.", true); return; }
 
-  const res = await fetch(`${WORKER_URL}/admin/partners`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name, stripeAccountId: acct, splitPercent: Number(split), discountPercent: Number(discount) }),
-  });
-  const data = await res.json();
-  if (data.success) {
-    showToast(`✓ Partner "${code}" gespeichert.`);
-    document.getElementById("new-code").value = "";
-    document.getElementById("new-name").value = "";
-    document.getElementById("new-acct").value = "";
-    document.getElementById("new-split").value = "50";
-    document.getElementById("new-discount").value = "0";
-    loadPartners();
-  } else {
-    showToast("Fehler: " + (data.error || "Unbekannt"), true);
+  try {
+    // 8. KORREKTUR: Header angepasst & data.ok statt data.success
+    const res = await fetch(`${WORKER_URL}/admin/partners`, {
+      method: "POST",
+      headers: { "X-Admin-Key": adminToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ code, name, stripeAccountId: acct, splitPercent: Number(split), discountPercent: Number(discount) }),
+    });
+    const data = await res.json();
+    if (data.ok || data.success) {
+      showToast(`✓ Partner "${code}" gespeichert.`);
+      document.getElementById("new-code").value = "";
+      document.getElementById("new-name").value = "";
+      document.getElementById("new-acct").value = "";
+      document.getElementById("new-split").value = "50";
+      document.getElementById("new-discount").value = "0";
+      loadPartners();
+    } else {
+      showToast("Fehler: " + (data.error || "Unbekannt"), true);
+    }
+  } catch (err) {
+    showToast("Netzwerkfehler: " + err.message, true);
   }
 }
 
 async function deletePartner(code) {
   if (!confirm(`Partner "${code}" wirklich löschen?`)) return;
-  const res = await fetch(`${WORKER_URL}/admin/partners/${code}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${adminToken}` },
-  });
-  const data = await res.json();
-  if (data.success) { showToast(`✓ Partner "${code}" gelöscht.`); loadPartners(); }
+  try {
+    // 9. KORREKTUR: Header angepasst & data.ok statt data.success
+    const res = await fetch(`${WORKER_URL}/admin/partners/${code}`, {
+      method: "DELETE",
+      headers: { "X-Admin-Key": adminToken },
+    });
+    const data = await res.json();
+    if (data.ok || data.success) { showToast(`✓ Partner "${code}" gelöscht.`); loadPartners(); }
+  } catch (err) {
+    showToast("Netzwerkfehler: " + err.message, true);
+  }
 }
 
 function copyRef(code) {
